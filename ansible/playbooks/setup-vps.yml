@@ -1,0 +1,84 @@
+# ansible/playbooks/setup-vps.yml
+---
+- name: Setup VPS for Vaultwarden
+  hosts: vaultwarden_servers
+  become: yes
+  vars:
+    docker_compose_version: "2.24.0"
+
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - git
+          - awscli
+          - sqlite3
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: "0755"
+
+    - name: Create vaultwarden directory
+      file:
+        path: /opt/vaultwarden
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create vaultwarden user
+      user:
+        name: vaultwarden
+        system: yes
+        shell: /bin/false
+        home: /opt/vaultwarden
+        create_home: no
+
+    - name: Setup firewall
+      ufw:
+        rule: "{{ item.rule }}"
+        port: "{{ item.port }}"
+        proto: "{{ item.proto | default('tcp') }}"
+      loop:
+        - { rule: "allow", port: "22" }
+        - { rule: "allow", port: "80" }
+        - { rule: "allow", port: "443" }
+        - { rule: "deny", port: "8080" } # Vaultwarden port (internal only)
+
+    - name: Enable firewall
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
