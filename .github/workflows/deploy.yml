@@ -1,0 +1,31 @@
+# .github/workflows/deploy.yml
+name: Deploy Vaultwarden
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/vaultwarden
+            git pull origin main
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f https://vault.tondomaine.com/alive || exit 1

@@ -1,0 +1,9 @@
+# scripts/crontab
+# Sauvegarde horaire (toutes les heures)
+0 * * * * /scripts/backup-hourly.sh >> /var/log/backup-hourly.log 2>&1
+
+# Sauvegarde quotidienne (tous les jours à 2h)
+0 2 * * * /scripts/backup-daily.sh >> /var/log/backup-daily.log 2>&1
+
+# Vérification de l'intégrité (hebdomadaire)
+0 3 * * 0 /scripts/verify-backups.sh >> /var/log/backup-verify.log 2>&1
